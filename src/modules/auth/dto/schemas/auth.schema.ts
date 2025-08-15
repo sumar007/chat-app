@@ -40,6 +40,19 @@ export const refreshTokenSchema = z.object({
     .min(1, 'Refresh token is required'),
 });
 
+// Add to existing schemas
+
+export const verifyEmailSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  code: z.string().length(6, 'Code must be 6 digits'),
+});
+
+export const resendCodeSchema = z.object({
+  email: z.string().email('Invalid email format'),
+});
+
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+export type ResendCodeInput = z.infer<typeof resendCodeSchema>;
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type SignInInput = z.infer<typeof signInSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;

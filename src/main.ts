@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -30,7 +32,11 @@ async function bootstrap() {
       transform: true, // Auto-transform payloads to DTO instances
     }),
   );
+// Global filters and interceptors
+  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
+  // Start server
   const port = process.env.PORT ?? 4000;
   await app.listen(port);
 

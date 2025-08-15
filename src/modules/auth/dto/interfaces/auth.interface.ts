@@ -14,7 +14,7 @@ export interface AuthResponse {
     id: string;
     email: string;
     name: string;
-    avatarUrl?: string;
+    avatarUrl?: string | null;
   };
   tokens: {
     accessToken: string;
@@ -25,6 +25,7 @@ export interface AuthResponse {
 export interface RefreshTokenRequest {
   refreshToken: string;
 }
+
 
 export interface TokenPayload {
   sub: string;
@@ -37,4 +38,13 @@ export interface TokenPayload {
 export interface JwtTokens {
   accessToken: string;
   refreshToken: string;
+}
+
+export interface VerifyEmailRequest {
+  email: string;
+  code: string;
+}
+
+export interface ResendCodeRequest {
+  email: string;
 }

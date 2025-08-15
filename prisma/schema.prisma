@@ -8,17 +8,21 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  email            String   @unique
+  password         String
+  name             String
+  avatarUrl        String?
+  isEmailVerified  Boolean  @default(false)
+  emailVerificationCode String?
+  emailVerificationExpiry DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   participants Participant[]
-  messages     Message[] // messages sent by this user
+  messages     Message[]
 }
+
 
 model Conversation {
   id        String           @id @default(cuid())

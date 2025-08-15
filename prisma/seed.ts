@@ -1,4 +1,5 @@
 import { PrismaClient, ConversationType, ParticipantRole, MessageType, MessageStatus } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -10,14 +11,15 @@ async function main() {
   await prisma.conversation.deleteMany();
   await prisma.user.deleteMany();
 
-  // ---------- Users ----------
+  // ---------- Users with proper password hashing and email verification ----------
   const users = [
     {
       id: 'u_alice',
       email: 'alice@example.com',
-      password: 'password123', // dev only; hash in real apps!
+      password: 'password123',
       name: 'Alice',
       avatarUrl: 'https://i.pravatar.cc/150?img=1',
+      isEmailVerified: true, // Pre-verified for testing
     },
     {
       id: 'u_bob',
@@ -25,6 +27,7 @@ async function main() {
       password: 'password123',
       name: 'Bob',
       avatarUrl: 'https://i.pravatar.cc/150?img=2',
+      isEmailVerified: true,
     },
     {
       id: 'u_charlie',
@@ -32,6 +35,7 @@ async function main() {
       password: 'password123',
       name: 'Charlie',
       avatarUrl: 'https://i.pravatar.cc/150?img=3',
+      isEmailVerified: true,
     },
     {
       id: 'u_bot',
@@ -39,22 +43,37 @@ async function main() {
       password: 'bot',
       name: 'Chat Assistant',
       avatarUrl: 'https://i.pravatar.cc/150?img=8',
+      isEmailVerified: true,
+    },
+    {
+      id: 'u_unverified',
+      email: 'unverified@example.com',
+      password: 'password123',
+      name: 'Unverified User',
+      avatarUrl: 'https://i.pravatar.cc/150?img=9',
+      isEmailVerified: false, // For testing email verification flow
+      emailVerificationCode: '123456',
+      emailVerificationExpiry: new Date(Date.now() + 15 * 60 * 1000), // 15 mins from now
     },
   ];
 
-  await Promise.all(
-    users.map((u) =>
-      prisma.user.create({
-        data: {
-          id: u.id,
-          email: u.email,
-          password: u.password,
-          name: u.name,
-          avatarUrl: u.avatarUrl,
-        },
-      }),
-    ),
-  );
+  // Create users with hashed passwords
+  for (const userData of users) {
+    const hashedPassword = await bcrypt.hash(userData.password, 12);
+    
+    await prisma.user.create({
+      data: {
+        id: userData.id,
+        email: userData.email,
+        password: hashedPassword, // Properly hashed
+        name: userData.name,
+        avatarUrl: userData.avatarUrl,
+        isEmailVerified: userData.isEmailVerified,
+        emailVerificationCode: userData.emailVerificationCode || null,
+        emailVerificationExpiry: userData.emailVerificationExpiry || null,
+      },
+    });
+  }
 
   // ---------- Conversations ----------
   const convDirectAliceBob = await prisma.conversation.create({
@@ -99,7 +118,6 @@ async function main() {
   });
 
   // ---------- Messages ----------
-  // DIRECT messages (with a reply)
   const m1 = await prisma.message.create({
     data: {
       id: 'm1',
@@ -158,7 +176,7 @@ async function main() {
       senderId: 'u_bob',
       type: MessageType.FILE,
       mediaUrl: 'https://example.com/files/spec.pdf',
-      text: 'Here’s the spec PDF.',
+      text: 'Heres the spec PDF.',
       status: MessageStatus.DELIVERED,
       createdAt: new Date(Date.now() - 1000 * 60 * 25), // 25m ago
     },
@@ -171,7 +189,7 @@ async function main() {
       conversationId: convAI.id,
       senderId: 'u_alice',
       type: MessageType.TEXT,
-      text: 'Hey Assistant, summarize today’s chat progress.',
+      text: 'Hey Assistant, summarize todays chat progress.',
       status: MessageStatus.SENT,
       createdAt: new Date(Date.now() - 1000 * 60 * 10), // 10m ago
     },
@@ -189,7 +207,8 @@ async function main() {
     },
   });
 
-  console.log('✅ Seeded: users, conversations, participants, messages');
+  console.log('✅ Seeded: users (with hashed passwords), conversations, participants, messages');
+  console.log('📧 Test email verification with: unverified@example.com, code: 123456');
 }
 
 main()
