@@ -3,29 +3,98 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // or "mysql" / "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  password        String
-  name            String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  messagesSent    Message[] @relation("MessagesSent")
-  messagesReceived Message[] @relation("MessagesReceived")
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants Participant[]
+  messages     Message[] // messages sent by this user
+}
+
+model Conversation {
+  id        String           @id @default(cuid())
+  type      ConversationType
+  title     String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  participants Participant[]
+  messages     Message[]
+
+  @@index([type])
+  @@index([updatedAt])
+}
+
+model Participant {
+  id             String          @id @default(cuid())
+  userId         String
+  conversationId String
+  role           ParticipantRole @default(MEMBER)
+  joinedAt       DateTime        @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@unique([userId, conversationId]) // user can't join twice
+  @@index([conversationId])
+  @@index([userId])
 }
 
 model Message {
-  id          String   @id @default(cuid())
-  text        String
-  createdAt   DateTime @default(now())
+  id             String        @id @default(cuid())
+  conversationId String
+  senderId       String
+  type           MessageType   @default(TEXT)
+  text           String?
+  mediaUrl       String?
+  status         MessageStatus @default(SENT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
 
-  sender      User     @relation("MessagesSent", fields: [senderId], references: [id])
-  senderId    String
+  // reply threading (self-relation)
+  replyToMessageId String?
+  replyToMessage   Message?  @relation("MessageReplies", fields: [replyToMessageId], references: [id])
+  replies          Message[] @relation("MessageReplies")
 
-  recipient   User     @relation("MessagesReceived", fields: [recipientId], references: [id])
-  recipientId String
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt]) // fast pagination in a conversation
+  @@index([senderId, createdAt]) // fetch user’s message history
+  @@index([replyToMessageId]) // quick load of reply chains
+  @@index([status]) // optional: filter by delivery status
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  AI
+}
+
+enum ParticipantRole {
+  MEMBER
+  ADMIN
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  VOICE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
 }
